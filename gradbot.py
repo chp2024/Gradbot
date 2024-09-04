@@ -1,6 +1,11 @@
 import chainlit as cl
 import os
 from dotenv import load_dotenv
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema import StrOutputParser
+from langchain.schema.runnable import Runnable
+from langchain.schema.runnable.config import RunnableConfig
 
 # Load environment variables from history.env file
 load_dotenv("history.env")
@@ -20,38 +25,34 @@ def auth_callback(username: str, password: str):
     
 @cl.on_chat_start
 async def on_chat_start():
-    app_user = cl.user_session.get("user")
-    await cl.Message(f"Hello {app_user.identifier}").send()
+    model = ChatOpenAI(streaming=True)
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                "You're a very knowledgeable historian who provides accurate and eloquent answers to historical questions.",
+            ),
+            ("human", "{question}"),
+        ]
+    )
+    runnable = prompt | model | StrOutputParser()
+    cl.user_session.set("runnable", runnable)
 
 
-# Main message handling function
 @cl.on_message
-async def main(message: cl.Message):
-    # Get user input
-    user_input = message.content.lower()
+async def on_message(message: cl.Message):
+    runnable = cl.user_session.get("runnable")  # type: Runnable
 
-    # Define responses based on user input
-    responses = {
-        "hello": "Hi Cameron",
-        "what is my classification?": "You are a Senior!",
-        "how many credits do i have?": "You have 90 credits!",
-        "what semester is this?": "It is currently the Spring 2024 semester!",
-        "what classes am i taking this semester?": "You are taking: \n \n Senior Project I \n Database Systems \n Structures of a programming language \n Intro to Machine Learning \n Technical Writing",
-        "what classes should i take next semester?": "Currently, you have it set to no more than 18 credits a semester. With that in mind the courses you should take are: \n \n Senior Project II \n Large Scale Programming \n Applied Data Science \n Technical Elective"
+    msg = cl.Message(content="")
 
-    }
+    async for chunk in runnable.astream(
+        {"question": message.content},
+        config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
+    ):
+        await msg.stream_token(chunk)
 
-    # Check if user input matches any predefined responses
-    response = responses.get(user_input, "Sorry, I didn't understand that.")
-
-    # If the user asked for their API key, provide it
-    if user_input == "what is my API key?":
-        api_key = os.getenv("LITERAL_API_KEY")
-        if api_key:
-            response = f"Your API key is: {api_key}"
-        else:
-            response = "Sorry, I couldn't find your API key."
-
+    await msg.send()
+    
     # Send the response back to the user
     await cl.Message(
         content=response,
