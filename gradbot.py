@@ -2,6 +2,44 @@ import chainlit as cl
 import os
 from dotenv import load_dotenv
 
+import fitz  # PyMuPDF
+import chromadb
+
+# Extract text from PDF
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    pdf_document = fitz.open(pdf_path)
+    for page_num in range(len(pdf_document)):
+        page = pdf_document.load_page(page_num)
+        text += page.get_text()
+    return text
+
+pdf_path = "handbook.pdf"
+pdf_text = extract_text_from_pdf(pdf_path)
+
+# Initialize Chroma Client
+client = chromadb.PersistentClient(path="/path/to/chroma/db")
+
+# Create or Get Collection
+collection_name = "courses"
+collection = client.get_or_create_collection(name=collection_name)
+
+# Add PDF Text to Collection
+collection.add(
+    documents=[pdf_text],
+    ids=["pdf_document"],
+    metadatas=[{"source": pdf_path}]
+)
+
+# Step 5: Query and Manage Data
+query_result = collection.query(
+    query_texts=["search terms"],
+    n_results=5
+)
+
+print(query_result)
+
+
 # Load environment variables from history.env file
 load_dotenv("history.env")
 
