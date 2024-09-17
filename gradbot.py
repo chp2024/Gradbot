@@ -1,96 +1,66 @@
 import chainlit as cl
 import os
 from dotenv import load_dotenv
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema import StrOutputParser
+from langchain.schema.runnable import Runnable
+from langchain.schema.runnable.config import RunnableConfig
+from langchain.document_loaders import PyPDFLoader
+from langchain.embeddings.openai import OpenAIEmbeddings
 
-import fitz  # PyMuPDF
-import chromadb
+# Load environment variables
+load_dotenv(".env")
 
-# Extract text from PDF
-def extract_text_from_pdf(pdf_path):
-    text = ""
-    pdf_document = fitz.open(pdf_path)
-    for page_num in range(len(pdf_document)):
-        page = pdf_document.load_page(page_num)
-        text += page.get_text()
-    return text
-
-pdf_path = "handbook.pdf"
-pdf_text = extract_text_from_pdf(pdf_path)
-
-# Initialize Chroma Client
-client = chromadb.PersistentClient(path="/path/to/chroma/db")
-
-# Create or Get Collection
-collection_name = "courses"
-collection = client.get_or_create_collection(name=collection_name)
-
-# Add PDF Text to Collection
-collection.add(
-    documents=[pdf_text],
-    ids=["pdf_document"],
-    metadatas=[{"source": pdf_path}]
-)
-
-# Step 5: Query and Manage Data
-query_result = collection.query(
-    query_texts=["search terms"],
-    n_results=5
-)
-
-print(query_result)
-
-
-# Load environment variables from history.env file
-load_dotenv("history.env")
+# Load and split documents
+loader = PyPDFLoader("handbook.pdf")
+docs = loader.load_and_split()
 
 # Authentication callback function
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
-    # Verify the credentials against your authentication service or database
     if (username, password) == ("admin", "admin"):
-        # If credentials match, return a User object with appropriate metadata
         return cl.User(
             identifier="admin", metadata={"role": "admin", "provider": "credentials"}
         )
-    else:
-        # If credentials don't match, return None to fail authentication
-        return None
-    
+    return None
+
 @cl.on_chat_start
 async def on_chat_start():
-    app_user = cl.user_session.get("user")
-    await cl.Message(f"Hello {app_user.identifier}").send()
+    # Initialize model
+    model = ChatOpenAI(streaming=True)
+    
+    # Create prompt template
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                "You're a very knowledgeable historian who provides accurate and eloquent answers to historical questions.",
+            ),
+            ("human", "{question}"),
+        ]
+    )
+    
+    # Define runnable
+    runnable = prompt | model | StrOutputParser()
+    
+    # Store runnable in user session
+    cl.user_session.set("runnable", runnable)
 
-
-# Main message handling function
 @cl.on_message
-async def main(message: cl.Message):
-    # Get user input
-    user_input = message.content.lower()
+async def on_message(message: cl.Message):
+    runnable = cl.user_session.get("runnable")  # type: Runnable
 
-    # Define responses based on user input
-    responses = {
-        "hello": "Hi Cameron",
-        "what is my classification?": "You are a Senior!",
-        "how many credits do i have?": "You have 90 credits!",
-        "what semester is this?": "It is currently the Spring 2024 semester!",
-        "what classes am i taking this semester?": "You are taking: \n \n Senior Project I \n Database Systems \n Structures of a programming language \n Intro to Machine Learning \n Technical Writing",
-        "what classes should i take next semester?": "Currently, you have it set to no more than 18 credits a semester. With that in mind the courses you should take are: \n \n Senior Project II \n Large Scale Programming \n Applied Data Science \n Technical Elective"
+    # Initialize an empty message to collect response chunks
+    msg = cl.Message(content="")
 
-    }
+    # Stream the response from the runnable
+    async for chunk in runnable.astream(
+        {"question": message.content},
+        config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
+    ):
+        # Append each chunk to the message content
+        msg.content += chunk
 
-    # Check if user input matches any predefined responses
-    response = responses.get(user_input, "Sorry, I didn't understand that.")
-
-    # If the user asked for their API key, provide it
-    if user_input == "what is my API key?":
-        api_key = os.getenv("LITERAL_API_KEY")
-        if api_key:
-            response = f"Your API key is: {api_key}"
-        else:
-            response = "Sorry, I couldn't find your API key."
-
-    # Send the response back to the user
-    await cl.Message(
-        content=response,
-    ).send()
+    # Send the full response back to the user
+    await msg.send()
