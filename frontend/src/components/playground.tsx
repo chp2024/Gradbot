@@ -9,7 +9,6 @@ import {
 } from "@chainlit/react-client";
 import Typewriter from 'typewriter-effect';
 import { useState } from "react";
-import { del } from "aws-amplify/api";
 
 export function Playground() {
   const [inputValue, setInputValue] = useState("");
@@ -29,30 +28,35 @@ export function Playground() {
     }
   };
 
-  
-
   const renderMessage = (message: IStep) => {
+    const isGradbot = message.name === "Gradbot";
+    
     return (
-      <div key={message.id} className="flex items-start space-x-2">
-        <div className="flex items-center space-x-2 w-full">
-          <div className="w-20 text-sm text-green-500">{message.name}</div>
-          <div className="flex-1 p-2">
-              {message.name === "Gradbot" ? (
-                <Typewriter
-                onInit={(typewriter) => {
-                  typewriter
-                    .typeString(message.output)
-                    .start()
-                    .callFunction(() => {
-                      console.log('String typed out!');
-                    })
-                }}
-                options={{
-                  delay: 50,
-                  cursor: '',
-                }}
+      <div key={message.id} className="flex items-start space-x-2 justify-start">
+        <div className="flex items-center space-x-2 flex-row w-full">
+          <div className="w-10 h-10">
+            {isGradbot ? (
+              <img
+                src="../public/bison.png"
+                alt="Gradbot Avatar"
+                className="rounded-full"
               />
-            ) : ( 
+            ) : (
+              <div className="w-10 h-10 flex items-center justify-center bg-blue-500 text-white rounded-full">
+                U
+              </div>
+            )}
+          </div>
+          
+          <div className="flex-1 p-2 bg-white dark:bg-gray-700 rounded-full shadow-md">
+            {isGradbot ? (
+              <Typewriter
+                onInit={(typewriter) => {
+                  typewriter.typeString(message.output).start();
+                }}
+                options={{ delay: 50, cursor: '' }}
+              />
+            ) : (
               <p>{message.output}</p>
             )}
           </div>
@@ -64,11 +68,11 @@ export function Playground() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
       <div className="flex-1 overflow-auto p-6">
-        <div className="space-y-4">
+        <div className="space-y-4 max-w-3xl mx-auto">
           {messages.map((message) => renderMessage(message))}
         </div>
       </div>
-      <div className="border-t p-4 bg-white dark:bg-gray-800 rounded-t-2xl rounded-b-2xl shadow-lg fixed left-0 right-0 bottom-10 mx-6">
+      <div className="border-t p-4 bg-white dark:bg-gray-800 rounded-t-2xl rounded-b-2xl shadow-lg fixed left-60 right-60 bottom-10 mx-6">
         <div className="flex items-center space-x-2">
           <Input
             autoFocus
