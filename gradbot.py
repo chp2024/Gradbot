@@ -69,7 +69,7 @@ def format_docs(docs):
     return "\n\n".join([doc.page_content for doc in docs])
 
 # Process the single PDF
-pdf_path = "/Users/cam/Downloads/handbook.pdf"  # Update with your PDF path
+pdf_path = "course_info.pdf"  # Update with your PDF path
 documents = process_single_pdf(pdf_path)
 
 # On chat start, initialize the retriever and runnable chain
