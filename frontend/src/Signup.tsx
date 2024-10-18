@@ -12,11 +12,6 @@ function Signup() {
 
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     navigate("/chat")
@@ -29,27 +24,21 @@ function Signup() {
         <h1 className="text-4xl font-bold mb-6">Create Your Account</h1>
         <form onSubmit={handleSubmit} className="space-y-4 w-96">
           <Input
-            type="text"
             name="name"
             placeholder="Name"
             value={formData.name}
-            onChange={handleChange}
             required
           />
           <Input
-            type="email"
             name="email"
             placeholder="Email"
             value={formData.email}
-            onChange={handleChange}
             required
           />
           <Input
-            type="password"
             name="password"
             placeholder="Password"
             value={formData.password}
-            onChange={handleChange}
             required
           />
           <Button type="submit" className="w-full">Sign Up</Button>
