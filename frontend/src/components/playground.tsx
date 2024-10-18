@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useChatInteract, useChatMessages, IStep } from "@chainlit/react-client";
 import { useState } from "react";
 import Typewriter from 'typewriter-effect';
-import SuggestedPrompts from "@/components/ui/suggestedprompts"; // Import the new component
+import SuggestedPrompts from "@/components/ui/suggestedprompts";
 
 export function Playground() {
   const [inputValue, setInputValue] = useState("");
