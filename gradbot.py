@@ -72,6 +72,15 @@ def format_docs(docs):
 pdf_path = "course_info.pdf"  # Update with your PDF path
 documents = process_single_pdf(pdf_path)
 
+
+# Authentication callback function
+@cl.password_auth_callback
+def auth_callback(username: str, password: str):
+    # Replace with your authentication logic
+    if (username, password) == ("admin", "admin"):
+        return cl.User(identifier="admin", metadata={"role": "admin"})
+    return None
+
 # On chat start, initialize the retriever and runnable chain
 @cl.on_chat_start
 async def on_chat_start():
@@ -100,7 +109,7 @@ async def on_chat_start():
 
 # On message, process the user's input and stream a response
 @cl.on_message
-async def on_message(message):
+async def on_message(message: cl.Message):
     msg = cl.Message(content="")
     runnable = cl.user_session.get("runnable")
     assert runnable is not None
