@@ -38,8 +38,13 @@ export function Playground() {
   };
 
   const renderMessage = (message: IStep) => {
+    console.log('Rendering message:', message); // Debug log
     const isGradbot = message.name === "Gradbot";
 
+    if (message.output.length === 0) {
+      return null;
+    }
+  
     return (
       <div key={message.id} className="flex items-start space-x-2 justify-start">
         <div className="flex items-center space-x-2 flex-row w-full">
@@ -56,7 +61,7 @@ export function Playground() {
               </div>
             )}
           </div>
-
+  
           <div className="flex-1 p-4 bg-white dark:bg-gray-700 rounded-2xl shadow-md">
             {isGradbot ? (
               <Typewriter
@@ -73,6 +78,7 @@ export function Playground() {
       </div>
     );
   };
+  
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
